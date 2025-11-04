@@ -5,6 +5,7 @@ import os
 from datetime import datetime
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
+from datetime import datetime, timezone
 
 # Carrega variáveis de ambiente do arquivo .env
 dotenv.load_dotenv()
@@ -35,32 +36,52 @@ def inicializar_banco_dados():
 # Inicializa banco de dados
 mongo_client = inicializar_banco_dados()
 
-# 🧩 Função para armazenar dados no MongoDB
-def salvar_temperatura(valor_cel, mensagem_original):
+# 🧩 Função para salvar/atualizar temperatura com base no dispositivo
+def atualizar_dados_climaticos(dispositivo, temperatura, umidade, mensagem_original):
     db = mongo_client["climavane"]
     colecao = db["dados_climaticos"]
 
     try:
-        documento = {
-            "timestamp": datetime.utcnow(),
-            "temperatura_cel": valor_cel,
-            "mensagem_bruta": mensagem_original
+        filtro = {"dispositivo": dispositivo}
+        atualizacao = {
+            "$set": {
+                "timestamp": datetime.utcnow(),
+                "temperatura_cel": temperatura,
+                "umidade_relativa": umidade,
+                "mensagem_bruta": mensagem_original
+            }
         }
-        resultado = colecao.insert_one(documento)
-        print(f"💾 Temperatura armazenada no MongoDB com ID: {resultado.inserted_id}")
-    except Exception as e:
-        print(f"⚠️ Erro ao inserir dados no MongoDB: {e}")
+        resultado = colecao.update_one(filtro, atualizacao, upsert=True)
 
-# Função para extrair o campo de temperatura (u == "Cel")
-def extrair_temperatura(msg_str):
+        if resultado.matched_count > 0:
+            print(f"♻️ Dados de '{dispositivo}' atualizados no MongoDB.")
+        else:
+            print(f"🆕 Novo registro criado para '{dispositivo}'.")
+    except Exception as e:
+        print(f"⚠️ Erro ao atualizar dados no MongoDB: {e}")
+
+# 🔍 Função para extrair bn, temperatura e umidade
+def extrair_dados(msg_str):
+    temperatura = None
+    umidade = None
+    dispositivo = "Desconhecido"
+
     try:
         data = json.loads(msg_str)
         for item in data:
-            if item.get("u") == "Cel":
-                return item.get("v")
+            if "bn" in item:
+                if item["bn"] == "F803320100033CAE":
+                    dispositivo = "Temp Interna"
+                elif item["bn"] == "F803320100033877":
+                    dispositivo = "Temp Externa"
+            elif item.get("u") == "Cel":
+                temperatura = item.get("v")
+            elif item.get("u") == "%RH":
+                umidade = item.get("v")
     except Exception as e:
         print(f"⚠️ Erro ao processar mensagem: {e}")
-    return None
+
+    return dispositivo, temperatura, umidade
 
 # Callback: conexão com o broker
 def on_connect(client, userdata, flags, rc):
@@ -76,12 +97,18 @@ def on_message(client, userdata, msg):
     mensagem = msg.payload.decode()
     print(f"\n📥 Mensagem bruta recebida: {mensagem}")
 
-    valor_cel = extrair_temperatura(mensagem)
-    if valor_cel is not None:
-        print(f"🌡️ Temperatura (Cel): {valor_cel:.2f} °C")
-        salvar_temperatura(valor_cel, mensagem)
+    dispositivo, temperatura, umidade = extrair_dados(mensagem)
+
+    print(f"📡 Dispositivo identificado: {dispositivo}")
+    if temperatura is not None:
+        print(f"🌡️ Temperatura: {temperatura:.2f} °C")
+    if umidade is not None:
+        print(f"💧 Umidade: {umidade:.2f} %")
+
+    if dispositivo != "Desconhecido" and (temperatura is not None or umidade is not None):
+        atualizar_dados_climaticos(dispositivo, temperatura, umidade, mensagem)
     else:
-        print("❌ Campo de temperatura não encontrado na mensagem.")
+        print("❌ Dados incompletos ou dispositivo não reconhecido.")
 
 # Cria cliente MQTT
 client = mqtt.Client()
