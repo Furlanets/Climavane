@@ -1,0 +1,6 @@
+dnspython==2.8.0
+dotenv==0.9.9
+mqtt==0.0.1
+paho-mqtt==2.1.0
+pymongo==4.15.3
+python-dotenv==1.2.1
