@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gráficos - Em Construção</title>
+    
+    <link rel="stylesheet" href="style.css">
+    
+    <script src="menu.js"></script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        /* Estilos para centralizar a mensagem */
+        .construcao-container {
+            text-align: center;
+            padding: 50px 20px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .icone-construcao {
+            font-size: 5em; /* Ícone bem grande */
+            color: #f39c12; /* Cor laranja de obra/atenção */
+            margin-bottom: 20px;
+            animation: flutuar 3s ease-in-out infinite; /* Animação leve */
+        }
+
+        .titulo-construcao {
+            color: #2c3e50;
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .texto-construcao {
+            color: #7f8c8d;
+            font-size: 1.1em;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        /* Animação para o ícone ficar subindo e descendo */
+        @keyframes flutuar {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-15px); }
+            100% { transform: translateY(0px); }
+        }
+
+        /* Barra de progresso fake (apenas visual) */
+        .barra-progresso {
+            width: 100%;
+            height: 10px;
+            background-color: #ecf0f1;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-bottom: 30px;
+        }
+
+        .progresso-valor {
+            width: 70%; /* Define quanto a barra está cheia */
+            height: 100%;
+            background-color: #3498db;
+            border-radius: 5px;
+            animation: carregar 2s ease-out;
+        }
+
+        @keyframes carregar {
+            from { width: 0%; }
+            to { width: 70%; }
+        }
+    </style>
+</head>
+<body>
+
+    <header class="header-full">
+        <img 
+            src="puclimalogo.png" 
+            alt="Banner Puclima" 
+            style="width: 30%; max-width: 200px; height: auto;"
+        >
+    </header>
+
+    <div class="container">
+        <div class="clima-card construcao-container">
+            
+            <div class="icone-construcao">
+                <i class="fas fa-chart-area"></i>
+                <i class="fas fa-hammer" style="font-size: 0.5em; vertical-align: middle;"></i>
+            </div>
+
+            <h1 class="titulo-construcao">Em Desenvolvimento</h1>
+            
+            <p class="texto-construcao">
+                Estamos trabalhando duro para trazer gráficos detalhados do histórico climático.<br>
+                Em breve você poderá visualizar a variação de temperatura, umidade e chuvas ao longo do tempo.
+            </p>
+
+            <div class="barra-progresso">
+                <div class="progresso-valor"></div>
+            </div>
+
+            <button onclick="window.location.href='index.html'" class="btn-voltar" style="padding: 12px 25px; cursor: pointer; border:none; background-color:#3498db; color:white; border-radius:5px; font-size:1em;">
+                <i class="fas fa-arrow-left"></i> Voltar ao Início
+            </button>
+        </div>
+    </div>
+
+</body>
+</html>

@@ -7,10 +7,11 @@
     
     <link rel="stylesheet" href="style.css">
     
-    <script src="routes.js"></script>
-    <script src="menu.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-database.js"></script>
+    <script src="config.js"></script>
+    <script src="routes.js"></script>
+    <script src="menu.js"></script>
 
     <style>
         /* Estilos específicos desta página para os cards individuais */
@@ -77,19 +78,6 @@
     </div>
 
     <script>
-        // --- 1. CONFIGURAÇÃO DO FIREBASE ---
-        const firebaseConfig = {
-            apiKey: "AIzaSyDVxvD8PmDK0jjvrNWPq1GfwSNL3lALg8c",
-            authDomain: "puclima.firebaseapp.com",
-            databaseURL: "https://puclima-default-rtdb.firebaseio.com",
-            projectId: "puclima",
-            storageBucket: "puclima.firebasestorage.app",
-            messagingSenderId: "790645096867",
-            appId: "1:790645096867:web:2fa98e72b214c149c71a16",
-            measurementId: "G-CQZJ8MHTXR"
-        };
-
-        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
         // --- 2. FUNÇÃO DA BÚSSOLA CORRIGIDA ---
