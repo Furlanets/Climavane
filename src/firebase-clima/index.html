@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clima em Tempo Real + Histórico</title>
+
+    <link rel="stylesheet" href="style.css">
+    <script src="menu.js"></script>
+    <script src="routes.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-database.js"></script>
+
+</head>
+<body>
+
+    <header class="header-full">
+        <img 
+            src="../../assets/puclimalogo.png" 
+            alt="Banner Puclima" 
+            style="width: 30%; max-width: 200px; height: auto;"
+        >
+    </header>
+
+    <div class="container" id="dados-container">
+        <p style="text-align: center;">Carregando dados do Firebase...</p>
+    </div>
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDVxvD8PmDK0jjvrNWPq1GfwSNL3lALg8c",
+            authDomain: "puclima.firebaseapp.com",
+            databaseURL: "https://puclima-default-rtdb.firebaseio.com",
+            projectId: "puclima",
+            storageBucket: "puclima.firebasestorage.app",
+            messagingSenderId: "790645096867",
+            appId: "1:790645096867:web:2fa98e72b214c149c71a16",
+            measurementId: "G-CQZJ8MHTXR"
+        };
+
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+
+        const dbRef = firebase.database().ref('dados_climaticos');
+        const container = document.getElementById('dados-container');
+        var historicoGlobal = {}; 
+
+        function formatarData(isoString) {
+            if (!isoString) return "Desconhecido";
+            try {
+                const data = new Date(isoString);
+                return data.toLocaleString('pt-BR');
+            } catch (e) { return isoString; }
+        }
+
+        dbRef.on('value', (snapshot) => {
+            container.innerHTML = ''; 
+            const dados = snapshot.val();
+            historicoGlobal = {};
+
+            if (dados) {
+                Object.keys(dados).forEach(chaveDispositivo => {
+                    const sensorData = dados[chaveDispositivo];
+                    let qtdHistorico = 0;
+
+                    if (sensorData.historico) {
+                        let lista = Object.values(sensorData.historico);
+                        lista.sort((a, b) => new Date(a.grava_timestamp || 0) - new Date(b.grava_timestamp || 0));
+                        historicoGlobal[chaveDispositivo] = lista;
+                        qtdHistorico = lista.length;
+                    } else {
+                        historicoGlobal[chaveDispositivo] = [];
+                    }
+                    
+                    const nomeFormatado = chaveDispositivo.replace(/_/g, ' ');
+
+                    const card = document.createElement('div');
+                    card.className = 'clima-card';
+                    
+                    // --- 3. LÓGICA DE CLIQUE PARA NOVA GUIA ---
+                    // Ao clicar, abre 'detalhes.html' passando o nome do sensor na URL
+                    card.onclick = function() {
+                        // '_blank' é o comando que força abrir em nova guia
+                        navegarParaDetalhes(chaveDispositivo);
+                    };
+
+                    let htmlConteudo = `
+                        <div class="titulo-sensor">
+                            ${chaveDispositivo === 'temp_externa' ? '🌡️ Sensor Externo' :
+                                chaveDispositivo === 'temp_interna' ? '🏠 Sensor Interno' :
+                                '🔍 ' + nomeFormatado.charAt(0).toUpperCase() + nomeFormatado.slice(1)
+                            }
+                            <span class="info-historico">📚 ${qtdHistorico} Dados anteriores</span>
+                        </div>
+                        <div class="dados-atuais">
+                    `;
+
+                    // --- CONVERSÕES E DADOS ---
+                    
+                    // Temperatura
+                    if (sensorData.temperatura_cel !== undefined) {
+                        htmlConteudo += `
+                            <div class="dado-item">
+                                <div class="dado-valor">${Number(sensorData.temperatura_cel).toFixed(1)} °C</div>
+                                <div class="dado-label">Temperatura</div>
+                            </div>
+                        `;
+                    }
+
+                    // Umidade
+                    if (sensorData.umidade_relativa !== undefined) {
+                        htmlConteudo += `
+                            <div class="dado-item">
+                                <div class="dado-valor">${Number(sensorData.umidade_relativa).toFixed(0)} %</div>
+                                <div class="dado-label">Umidade</div>
+                            </div>
+                        `;
+                    }
+                    
+                    // Chuva (Metros para mm)
+                    if (sensorData.nivel_chuva_m !== undefined) {
+                        htmlConteudo += `
+                            <div class="dado-item">
+                                <div class="dado-valor">${(Number(sensorData.nivel_chuva_m) * 1000).toFixed(1)} mm</div>
+                                <div class="dado-label">Chuva</div>
+                            </div>
+                        `;
+                    }
+
+                    // Vento (m/s para km/h) - Se existir no banco
+                    if (sensorData.velocidade_vento_gust_m_s !== undefined) {
+                        htmlConteudo += `
+                            <div class="dado-item">
+                                <div class="dado-valor">${(Number(sensorData.velocidade_vento_gust_m_s) * 3.6).toFixed(1)} km/h</div>
+                                <div class="dado-label">Vento (Rajada)</div>
+                            </div>
+                        `;
+                    }
+
+                    htmlConteudo += `
+                        </div>
+                        <span class="timestamp">
+                            Clique para ver detalhes <br>
+                            🕒 Atualizado: ${formatarData(sensorData.timestamp)}
+                        </span>
+                    `;
+
+                    card.innerHTML = htmlConteudo;
+                    container.appendChild(card);
+                });
+            } else {
+                container.innerHTML = '<p style="text-align:center">Nenhum dado encontrado.</p>';
+            }
+        }, (error) => {
+            console.error("Erro:", error);
+            container.innerHTML = `<p style="color:red; text-align:center">Erro: ${error.code}</p>`;
+        });
+    </script>
+</body>
+</html>

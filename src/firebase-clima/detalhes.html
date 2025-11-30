@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detalhes do Sensor</title>
+    
+    <link rel="stylesheet" href="style.css">
+    
+    <script src="routes.js"></script>
+    <script src="menu.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-database.js"></script>
+
+    <style>
+        /* Estilos específicos desta página para os cards individuais */
+        .grid-detalhes {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            padding: 20px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .card-detalhe {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            border-bottom: 4px solid #3498db; /* Azul base */
+            transition: transform 0.2s;
+        }
+
+        .card-detalhe:hover {
+            transform: translateY(-5px);
+        }
+
+        .card-icone {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .card-valor {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .card-label {
+            color: #7f8c8d;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <header class="header-full">
+        <img 
+            src="../../assets/puclimalogo.png" 
+            alt="Banner Puclima" 
+            style="width: 30%; max-width: 200px; height: auto;"
+        >
+    </header>
+
+    <div style="text-align: center;">
+        <h1 id="titulo-pagina" style="color: #2c3e50; text-transform: uppercase;">Carregando...</h1>
+        <button onclick="window.location.href='index.html'" class="btn-voltar">Voltar</button>
+    </div>
+
+    <div id="container-cards" class="grid-detalhes">
+    </div>
+
+    <script>
+        // --- 1. CONFIGURAÇÃO DO FIREBASE ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyDVxvD8PmDK0jjvrNWPq1GfwSNL3lALg8c",
+            authDomain: "puclima.firebaseapp.com",
+            databaseURL: "https://puclima-default-rtdb.firebaseio.com",
+            projectId: "puclima",
+            storageBucket: "puclima.firebasestorage.app",
+            messagingSenderId: "790645096867",
+            appId: "1:790645096867:web:2fa98e72b214c149c71a16",
+            measurementId: "G-CQZJ8MHTXR"
+        };
+
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // --- 2. FUNÇÃO DA BÚSSOLA CORRIGIDA ---
+        function obterDirecaoCardeal(graus) {
+            // CORREÇÃO: troquei 'degrees' por 'graus' aqui
+            if (graus === undefined || graus === null) return "--";
+            
+            const direcoes = ['N', 'NE', 'L', 'SE', 'S', 'SO', 'O', 'NO'];
+            
+            // Garante que o número seja positivo e dentro de 0-7
+            const index = Math.round(graus / 45) % 8;
+            return direcoes[index];
+        }
+
+        // --- 3. LÓGICA PRINCIPAL ---
+        const params = new URLSearchParams(window.location.search);
+        const idSensor = params.get('sensor'); 
+        
+        const tituloEl = document.getElementById('titulo-pagina');
+        const containerEl = document.getElementById('container-cards');
+
+        if (!idSensor) {
+            tituloEl.innerText = "Erro: Sensor não identificado";
+        } else {
+            if (idSensor === 'temp_externa'){
+                tituloEl.innerText = "🌡️ Sensor Externo";
+            } else {
+                if (idSensor === 'temp_interna'){
+                    tituloEl.innerText = "🏠 Sensor Interno";
+                } else {
+                    tituloEl.innerText = idSensor.replace(/_/g, ' ').toUpperCase();
+                }
+            } 
+
+            db.ref('dados_climaticos/' + idSensor).on('value', (snapshot) => {
+                const dados = snapshot.val();
+                containerEl.innerHTML = ''; 
+
+                if (dados) {
+                    // === SENSOR EXTERNO ===
+                    if (idSensor === 'temp_externa') {
+                        
+                        // 1. Temperatura
+                        criarCard('🌡️', 'Temperatura', dados.temperatura_cel, '°C');
+                        
+                        // 2. Umidade
+                        criarCard('💧', 'Umidade', dados.umidade_relativa, '%');
+                        
+                        // 3. Chuva
+                        const chuva = (dados.nivel_chuva_m !== undefined) ? (dados.nivel_chuva_m * 1000).toFixed(1) : 0;
+                        criarCard('☔', 'Nível de Chuva', chuva, 'mm');
+
+                        // 4. Vento Média
+                        const ventoMed = (dados.velocidade_vento_media_m_s !== undefined) ? (dados.velocidade_vento_media_m_s * 3.6).toFixed(1) : 0;
+                        criarCard('💨', 'Vento (Média)', ventoMed, 'km/h');
+
+                        // 5. Vento Rajada
+                        const ventoGust = (dados.velocidade_vento_gust_m_s !== undefined) ? (dados.velocidade_vento_gust_m_s * 3.6).toFixed(1) : 0;
+                        criarCard('🌪️', 'Vento (Rajada)', ventoGust, 'km/h');
+                        
+                        // 6. Direção do Vento (Manual)
+                        let displayDirecao = "--";
+                        let displayAngulo = "--";
+                        
+                        if (dados.direcao_vento !== undefined && dados.direcao_vento !== null) {
+                            displayAngulo = dados.direcao_vento;
+                            displayDirecao = obterDirecaoCardeal(dados.direcao_vento);
+                        }
+                        
+                        const divDir = document.createElement('div');
+                        divDir.className = 'card-detalhe';
+                        divDir.innerHTML = `
+                            <span class="card-icone">🧭</span>
+                            <div class="card-valor">${displayAngulo}° ${displayDirecao}</div>
+                            <div class="card-label">Direção Vento</div>
+                        `;
+                        containerEl.appendChild(divDir);
+
+                        // 7. Radiação Solar
+                        // Se existir, usa o valor. Se não, assume 0.
+                        const sol = (dados.radiacao_solar_w_m2 !== undefined) ? dados.radiacao_solar_w_m2 : 0;
+                        criarCard('☀️', 'Radiação Solar', sol, 'W/m²');
+
+                    } else {
+                        // === OUTROS SENSORES ===
+                        criarCard('🌡️', 'Temperatura', dados.temperatura_cel, '°C');
+                        criarCard('💧', 'Umidade', dados.umidade_relativa, '%');
+                    }
+
+                } else {
+                    containerEl.innerHTML = '<p>Aguardando dados...</p>';
+                }
+            });
+        }
+
+        function criarCard(icone, titulo, valor, unidade) {
+            let valorFinal = valor;
+            
+            if (typeof valor === 'number') {
+                valorFinal = Number.isInteger(valor) ? valor : valor.toFixed(1);
+            }
+            if (valor === undefined || valor === null) valorFinal = "--";
+
+            const div = document.createElement('div');
+            div.className = 'card-detalhe';
+            div.innerHTML = `
+                <span class="card-icone">${icone}</span>
+                <div class="card-valor">${valorFinal} <small style="font-size:0.5em">${unidade}</small></div>
+                <div class="card-label">${titulo}</div>
+            `;
+            containerEl.appendChild(div);
+        }
+    </script>
+</body>
+</html>
