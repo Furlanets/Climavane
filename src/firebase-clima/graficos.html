@@ -3,109 +3,188 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gráficos - Em Construção</title>
+    <title>Gráficos Históricos (8h) - PUClima</title>
     
+    <link rel="icon" type="image/png" href="puclimalogo.png">
     <link rel="stylesheet" href="style.css">
-    <link rel="icon" type="image/png" href="puclima_icon.png">
     
-    <script src="menu.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-database.js"></script>
+    <script src="config.js"></script> 
+    <script src="menu.js"></script>   
 
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
-        /* Estilos para centralizar a mensagem */
-        .construcao-container {
-            text-align: center;
-            padding: 50px 20px;
-            max-width: 600px;
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            padding: 20px;
+            max-width: 1200px;
             margin: 0 auto;
         }
 
-        .icone-construcao {
-            font-size: 5em; /* Ícone bem grande */
-            color: #f39c12; /* Cor laranja de obra/atenção */
-            margin-bottom: 20px;
-            animation: flutuar 3s ease-in-out infinite; /* Animação leve */
+        .chart-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            border-top: 4px solid #3498db;
         }
 
-        .titulo-construcao {
+        .chart-title {
+            text-align: center;
             color: #2c3e50;
-            font-size: 2em;
-            margin-bottom: 10px;
-        }
-
-        .texto-construcao {
-            color: #7f8c8d;
+            margin-bottom: 15px;
             font-size: 1.1em;
-            margin-bottom: 30px;
-            line-height: 1.6;
+            font-weight: bold;
         }
 
-        /* Animação para o ícone ficar subindo e descendo */
-        @keyframes flutuar {
-            0% { transform: translateY(0px); }
-            50% { transform: translateY(-15px); }
-            100% { transform: translateY(0px); }
-        }
-
-        /* Barra de progresso fake (apenas visual) */
-        .barra-progresso {
-            width: 100%;
-            height: 10px;
-            background-color: #ecf0f1;
-            border-radius: 5px;
-            overflow: hidden;
-            margin-bottom: 30px;
-        }
-
-        .progresso-valor {
-            width: 70%; /* Define quanto a barra está cheia */
-            height: 100%;
-            background-color: #3498db;
-            border-radius: 5px;
-            animation: carregar 2s ease-out;
-        }
-
-        @keyframes carregar {
-            from { width: 0%; }
-            to { width: 70%; }
+        @media (max-width: 600px) {
+            .dashboard-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
 
     <header class="header-full">
-        <img 
-            src="puclimalogo.png" 
-            alt="Banner Puclima" 
-            style="width: 30%; max-width: 200px; height: auto;"
-        >
+        <img src="puclimalogo.png" alt="Banner Puclima" style="width: 30%; max-width: 200px; height: auto;">
+        <h2 style="color: white; margin-top: 5px; font-weight: normal; font-size: 1.2em;">
+            Histórico (Intervalos de 8h)
+        </h2>
     </header>
 
-    <div class="container">
-        <div class="clima-card construcao-container">
-            
-            <div class="icone-construcao">
-                <i class="fas fa-chart-area"></i>
-                <i class="fas fa-hammer" style="font-size: 0.5em; vertical-align: middle;"></i>
-            </div>
+    <div id="loading" style="text-align: center; margin-top: 50px; font-size: 1.2em; color: #7f8c8d;">
+        ⏳ Calculando médias por turno...
+    </div>
 
-            <h1 class="titulo-construcao">Em Desenvolvimento</h1>
-            
-            <p class="texto-construcao">
-                Estamos trabalhando duro para trazer gráficos detalhados do histórico climático.<br>
-                Em breve você poderá visualizar a variação de temperatura, umidade e chuvas ao longo do tempo.
-            </p>
-
-            <div class="barra-progresso">
-                <div class="progresso-valor"></div>
-            </div>
-
-            <button onclick="window.location.href='index.html'" class="btn-voltar" style="padding: 12px 25px; cursor: pointer; border:none; background-color:#3498db; color:white; border-radius:5px; font-size:1em;">
-                <i class="fas fa-arrow-left"></i> Voltar ao Início
-            </button>
+    <div class="dashboard-grid" id="area-graficos" style="display: none;">
+        <div class="chart-card">
+            <div class="chart-title">🌡️ Temperatura (°C)</div>
+            <canvas id="graficoTemp"></canvas>
+        </div>
+        <div class="chart-card">
+            <div class="chart-title">💧 Umidade (%)</div>
+            <canvas id="graficoUmid"></canvas>
+        </div>
+        <div class="chart-card">
+            <div class="chart-title">☔ Chuva Acumulada (mm)</div>
+            <canvas id="graficoChuva"></canvas>
+        </div>
+        <div class="chart-card">
+            <div class="chart-title">💨 Vento Médio (km/h)</div>
+            <canvas id="graficoVento"></canvas>
         </div>
     </div>
 
+    <script>
+        const db = firebase.database();
+        const historicoRef = db.ref('dados_climaticos/temp_externa/historico');
+
+        historicoRef.once('value').then((snapshot) => {
+            const dados = snapshot.val();
+            
+            if (!dados) {
+                document.getElementById('loading').innerText = "Nenhum histórico encontrado.";
+                return;
+            }
+
+            // --- 1. PROCESSAMENTO DE DADOS (AGRUPAR A CADA 8 HORAS) ---
+            const grupos = {}; 
+
+            Object.values(dados).forEach(registro => {
+                if (!registro.grava_timestamp) return;
+
+                const dataObj = new Date(registro.grava_timestamp);
+                
+                // Pega dia e mês (ex: 25/11)
+                const diaMes = dataObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+                
+                // Pega a hora (0 a 23)
+                const hora = dataObj.getHours();
+
+                // LÓGICA DE TURNOS DE 8 HORAS
+                // 00-07 = Turno 0 | 08-15 = Turno 1 | 16-23 = Turno 2
+                const turno = Math.floor(hora / 8); 
+                
+                let labelTurno = "";
+                if (turno === 0) labelTurno = "00h-08h";
+                if (turno === 1) labelTurno = "08h-16h";
+                if (turno === 2) labelTurno = "16h-00h";
+
+                // Chave única: "25/11 08h-16h"
+                // Adicionamos um prefixo numérico invisível para ordenar corretamente no gráfico depois se precisar,
+                // mas aqui usaremos a string direta. O JS costuma ordenar datas ISO, mas chaves string dependem da inserção.
+                // Vamos simplificar usando a string como chave.
+                const chave = `${diaMes} (${labelTurno})`;
+
+                if (!grupos[chave]) {
+                    grupos[chave] = { temps: [], umids: [], ventos: [], chuvas: [] };
+                }
+
+                if(registro.temperatura_cel) grupos[chave].temps.push(Number(registro.temperatura_cel));
+                if(registro.umidade_relativa) grupos[chave].umids.push(Number(registro.umidade_relativa));
+                if(registro.velocidade_vento_media_m_s) grupos[chave].ventos.push(Number(registro.velocidade_vento_media_m_s) * 3.6);
+                if(registro.nivel_chuva_m) grupos[chave].chuvas.push(Number(registro.nivel_chuva_m) * 1000);
+            });
+
+            // --- 2. CALCULAR MÉDIAS ---
+            // Ordenar as chaves para o gráfico não ficar bagunçado cronologicamente
+            // Como nossa chave começa com dia/mês, ela ordena razoavelmente bem para o mês atual.
+            const labelsOrdenadas = Object.keys(grupos); 
+
+            const mediaTemp = [];
+            const mediaUmid = [];
+            const mediaVento = [];
+            const maxChuva = [];
+
+            labelsOrdenadas.forEach(chave => {
+                const g = grupos[chave];
+                const calcMedia = (arr) => arr.length ? (arr.reduce((a, b) => a + b, 0) / arr.length) : 0;
+                const calcMax = (arr) => arr.length ? Math.max(...arr) : 0;
+
+                mediaTemp.push(calcMedia(g.temps));
+                mediaUmid.push(calcMedia(g.umids));
+                mediaVento.push(calcMedia(g.ventos));
+                maxChuva.push(calcMax(g.chuvas));
+            });
+
+            // --- 3. CRIAR GRÁFICOS ---
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('area-graficos').style.display = 'grid';
+
+            const criarGrafico = (idCanvas, label, dados, cor, tipo='line') => {
+                new Chart(document.getElementById(idCanvas), {
+                    type: tipo,
+                    data: {
+                        labels: labelsOrdenadas,
+                        datasets: [{
+                            label: label,
+                            data: dados,
+                            borderColor: cor,
+                            backgroundColor: cor + '33', // Adiciona transparência
+                            borderWidth: 2,
+                            tension: 0.3,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { display: false } },
+                        scales: { 
+                            x: { ticks: { maxRotation: 45, minRotation: 45 } }, // Inclina o texto da data para caber
+                            y: { beginAtZero: true } 
+                        }
+                    }
+                });
+            };
+
+            criarGrafico('graficoTemp', 'Temp (°C)', mediaTemp, '#e74c3c');
+            criarGrafico('graficoUmid', 'Umid (%)', mediaUmid, '#3498db');
+            criarGrafico('graficoVento', 'Vento (km/h)', mediaVento, '#95a5a6');
+            criarGrafico('graficoChuva', 'Chuva (mm)', maxChuva, '#9b59b6', 'bar');
+        });
+    </script>
 </body>
 </html>

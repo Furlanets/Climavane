@@ -111,7 +111,7 @@
                     if (sensorData.chuva_ultima_medicao_mm !== undefined) {
                         htmlConteudo += `
                             <div class="dado-item">
-                                <div class="dado-valor">${(Number(sensorData.chuva_ultima_medicao_mm) * 1000).toFixed(1)} mm</div>
+                                <div class="dado-valor">${(Number(sensorData.chuva_ultima_medicao_mm)).toFixed(1)} mm</div>
                                 <div class="dado-label">Chuva</div>
                             </div>
                         `;
