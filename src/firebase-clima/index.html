@@ -108,10 +108,10 @@
                     }
                     
                     // Chuva (Metros para mm)
-                    if (sensorData.nivel_chuva_m !== undefined) {
+                    if (sensorData.nivel_chuva_mm !== undefined) {
                         htmlConteudo += `
                             <div class="dado-item">
-                                <div class="dado-valor">${(Number(sensorData.nivel_chuva_m) * 1000).toFixed(1)} mm</div>
+                                <div class="dado-valor">${(Number(sensorData.nivel_chuva_mm) * 1000).toFixed(1)} mm</div>
                                 <div class="dado-label">Chuva</div>
                             </div>
                         `;
