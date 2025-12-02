@@ -126,7 +126,7 @@
                 if(registro.temperatura_cel) grupos[chave].temps.push(Number(registro.temperatura_cel));
                 if(registro.umidade_relativa) grupos[chave].umids.push(Number(registro.umidade_relativa));
                 if(registro.velocidade_vento_media_m_s) grupos[chave].ventos.push(Number(registro.velocidade_vento_media_m_s) * 3.6);
-                if(registro.nivel_chuva_m) grupos[chave].chuvas.push(Number(registro.nivel_chuva_m) * 1000);
+                if(registro.chuva_ultima_medicao_mm) grupos[chave].chuvas.push(Number(registro.chuva_ultima_medicao_mm));
             });
 
             // --- 2. CALCULAR MÉDIAS ---
