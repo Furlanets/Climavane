@@ -124,6 +124,43 @@ def atualizar_dados_climaticos(dispositivo, dados, mensagem_original):
 
     chave = dispositivo.lower().replace(" ", "_")
     ref = db.reference(f"dados_climaticos/{chave}")
+    meta_ref = ref.child("meta") # Definimos a referência meta antes para ler o valor antigo
+
+    # ========================================================
+    #  CÁLCULO DE CHUVA (MOVIDO PARA O INÍCIO)
+    # ========================================================
+    nivel_atual = dados.get("nivel_chuva_m")
+    chuva_mm = 0.0  # Valor padrão caso não tenha chovido ou seja a primeira leitura
+
+    if nivel_atual is not None:
+        # Busca o valor anterior no banco
+        ultimo_nivel = meta_ref.child("ultimo_nivel_chuva_m").get()
+
+        if ultimo_nivel is not None:
+            try:
+                ultimo_nivel = float(ultimo_nivel)
+                diff_m = nivel_atual - ultimo_nivel
+
+                if diff_m >= 0:
+                    chuva_mm = diff_m
+                    # Convertendo de Metros (se for o caso) ou mantendo a unidade bruta
+                    # Se o sensor envia em mm acumulado, diff_m já é mm. 
+                    # Se envia metros, multiplique por 1000 aqui se necessário.
+                    
+                    print(f"🌧️ Chuva desde a última medição: {chuva_mm:.4f}")
+                else:
+                    # Sensor resetou (valor atual menor que o anterior)
+                    print("⚠️ Reset do acumulador de chuva detectado.")
+                    chuva_mm = 0.0
+            except:
+                pass
+        
+        # Atualiza o "último nível" no meta para a próxima comparação
+        meta_ref.update({"ultimo_nivel_chuva_m": nivel_atual})
+
+    # ========================================================
+    #  SALVAMENTO NO FIREBASE (AGORA COM chuva_mm)
+    # ========================================================
 
     # Atualiza o estado atual
     ref.update({
@@ -137,41 +174,15 @@ def atualizar_dados_climaticos(dispositivo, dados, mensagem_original):
         "velocidade_vento_media_m_s": dados.get("velocidade_vento_media_m_s"),
         "velocidade_vento_gust_m_s": dados.get("velocidade_vento_gust_m_s"),
         "nivel_chuva_m": dados.get("nivel_chuva_m"),
+        
+        # ADICIONADO AQUI:
+        "chuva_ultima_medicao_mm": chuva_mm,
 
         "mensagem_bruta": mensagem_original
     })
 
-    meta_ref = ref.child("meta")
-
     # ========================================================
-    #  CÁLCULO SIMPLES DE CHUVA POR DIFERENÇA ENTRE LEITURAS
-    # ========================================================
-    nivel_atual = dados.get("nivel_chuva_m")
-
-    if nivel_atual is not None:
-        ultimo_nivel = meta_ref.child("ultimo_nivel_chuva_m").get()
-
-        if ultimo_nivel is not None:
-            try:
-                ultimo_nivel = float(ultimo_nivel)
-                diff_m = nivel_atual - ultimo_nivel
-
-                if diff_m >= 0:
-                    chuva_mm = diff_m
-                    meta_ref.update({"chuva_ultima_medicao_mm": chuva_mm})
-                    print(f"🌧️ Chuva desde a última medição: {chuva_mm:.2f} mm")
-                else:
-                    # Sensor resetou
-                    print("⚠️ Reset do acumulador de chuva detectado.")
-                    meta_ref.update({"chuva_ultima_medicao_mm": 0})
-            except:
-                pass
-
-        # Atualiza o nível anterior para o próximo cálculo
-        meta_ref.update({"ultimo_nivel_chuva_m": nivel_atual})
-
-    # ========================================================
-    #  HISTÓRICO SIMPLES (SEM CÁLCULOS DE CHUVA)
+    #  HISTÓRICO
     # ========================================================
 
     # Contador de mensagens
@@ -186,6 +197,10 @@ def atualizar_dados_climaticos(dispositivo, dados, mensagem_original):
         hist_ref.push({
             "mensagem_timestamp": dados.get("mensagem_timestamp"),
             "nivel_chuva_m": dados.get("nivel_chuva_m"),
+            
+            # ADICIONADO AQUI TAMBÉM (OPCIONAL, MAS RECOMENDADO):
+            "chuva_ultima_medicao_mm": chuva_mm, 
+
             "temperatura_cel": dados.get("temperatura_cel"),
             "umidade_relativa": dados.get("umidade_relativa"),
             "radiacao_solar_w_m2": dados.get("radiacao_solar_w_m2"),
@@ -199,9 +214,12 @@ def atualizar_dados_climaticos(dispositivo, dados, mensagem_original):
         hist = hist_ref.get() or {}
         if len(hist) > HIST_MAX:
             # remove as mais antigas
-            for key in list(hist.keys())[:len(hist) - HIST_MAX]:
-                hist_ref.child(key).delete()
-
+            # Ordena por chave (timestamp do push) para garantir que apaga as antigas
+            chaves_ordenadas = sorted(hist.keys())
+            qtd_para_remover = len(hist) - HIST_MAX
+            
+            for key in chaves_ordenadas[:qtd_para_remover]:
+                hist_ref.child(key).delete()    
 
 # ============================================================
 #  MQTT CALLBACKS

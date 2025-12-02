@@ -128,7 +128,7 @@
                         criarCard('💧', 'Umidade', dados.umidade_relativa, '%');
                         
                         // 3. Chuva
-                        const chuva = (dados.nivel_chuva_m !== undefined) ? (dados.nivel_chuva_m * 1000).toFixed(1) : 0;
+                        const chuva = (dados.chuva_ultima_medicao_mm !== undefined) ? (dados.chuva_ultima_medicao_mm * 1000).toFixed(1) : 0;
                         criarCard('☔', 'Nível de Chuva', chuva, 'mm');
 
                         // 4. Vento Média
