@@ -97,9 +97,9 @@ def extrair_dados(msg_str):
 
             elif nome == "emw_wind_direction":
                 try:
-                    dados["direcao_vento"] = float(valor) * 180 / math.pi
+                    dados["direcao_vento"] = round(float(valor) * 180 / math.pi, 2)
                 except:
-                    dados["direcao_vento"] = valor
+                    dados["direcao_vento"] = round(valor, 2)
 
             elif nome == "emw_average_wind_speed":
                 dados["velocidade_vento_media_m_s"] = valor
