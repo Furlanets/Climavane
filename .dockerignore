@@ -1,0 +1,64 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+pip-wheel-metadata/
+
+# Installer logs
+pip-log.txt
+
+# Test / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDEs and editors
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker compose overrides (local)
+docker-compose.override.yml
+
+# Secrets / credentials (avoid adding credentials to image)
+.env
+.env.*
+puclima-firebase-adminsdk*.json
+*firebase-adminsdk*.json
+credentials.json
+secrets/
+*.pem
+*.key
+
+# Logs
+*.log
+
+# Databases
+*.sqlite3
+
+# Node (if present)
+node_modules/
+
+# Misc
+*.pyc
+*.pyo
+*.pyd
+
+# Keep README, Dockerfile, requirements.txt and source files
+# (don't ignore these)
