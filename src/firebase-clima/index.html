@@ -67,12 +67,20 @@
                     const card = document.createElement('div');
                     card.className = 'clima-card';
                     
-                    // --- 3. LÓGICA DE CLIQUE PARA NOVA GUIA ---
-                    // Ao clicar, abre 'detalhes.html' passando o nome do sensor na URL
                     card.onclick = function() {
-                        // '_blank' é o comando que força abrir em nova guia
                         navegarParaDetalhes(chaveDispositivo);
                     };
+
+                    // --- NOVA LÓGICA DE ALERTA DE CHUVA ---
+                    let alertaChuvaHtml = '';
+                    // Verifica se tem chuva (> 0) e se NÃO é o sensor interno
+                    if (Number(sensorData.chuva_ultima_medicao_mm) > 0 && chaveDispositivo !== 'temp_interna') {
+                        alertaChuvaHtml = `
+                            <div style="background-color: #e1f5fe; color: #0277bd; padding: 8px; margin: 10px 15px 0 15px; border-radius: 8px; text-align: center; font-weight: bold; font-size: 0.9em; border: 1px solid #b3e5fc;">
+                                🌧️ Está chovendo agora!
+                            </div>
+                        `;
+                    }
 
                     let htmlConteudo = `
                         <div class="titulo-sensor">
@@ -82,11 +90,10 @@
                             }
                             <span class="info-historico">📚 ${qtdHistorico} Dados anteriores</span>
                         </div>
-                        <div class="dados-atuais">
+                        
+                        ${alertaChuvaHtml} <div class="dados-atuais">
                     `;
 
-                    // --- CONVERSÕES E DADOS ---
-                    
                     // Temperatura
                     if (sensorData.temperatura_cel !== undefined) {
                         htmlConteudo += `
@@ -107,8 +114,8 @@
                         `;
                     }
                     
-                    // Chuva (Metros para mm)
-                    if (sensorData.chuva_ultima_medicao_mm !== undefined) {
+                    // Chuva (Exclui sensor interno)
+                    if (sensorData.chuva_ultima_medicao_mm !== undefined && chaveDispositivo !== 'temp_interna') {
                         htmlConteudo += `
                             <div class="dado-item">
                                 <div class="dado-valor">${(Number(sensorData.chuva_ultima_medicao_mm)).toFixed(1)} mm</div>
@@ -117,7 +124,7 @@
                         `;
                     }
 
-                    // Vento (m/s para km/h) - Se existir no banco
+                    // Vento
                     if (sensorData.velocidade_vento_gust_m_s !== undefined) {
                         htmlConteudo += `
                             <div class="dado-item">
